@@ -39,7 +39,7 @@ def _tokenize_subprocess(tokenizer: BertTokenizerFast, semaphore: Semaphore,
         writer_queue.put((key, token_ids))
 
 
-def _write_db_subprocess(tokenized_lmdb_path: str, writer_queue: Queue):
+def _write_db_subprocess(tokenized_lmdb_path: str, writer_queue: Queue, dtype: numpy.dtype):
     dst_env = lmdb.open(
         tokenized_lmdb_path, readonly=False, lock=True, map_size=1024 * 1024 * 1024 * 100)
     dst_txn = dst_env.begin(buffers=True, write=True)
@@ -59,7 +59,7 @@ def _write_db_subprocess(tokenized_lmdb_path: str, writer_queue: Queue):
         key, token_ids = item
         doi, ip = key.split(b' ')
 
-        dst_txn.put(key, token_ids.astype(numpy.long).tobytes())
+        dst_txn.put(key, token_ids.astype(dtype).tobytes())
 
         # Minus 2 since we have [CLS] and [SEP].
         meta_maps[doi][int(ip)] = token_ids.size - 2
@@ -83,7 +83,8 @@ def tokenize_lmdb(
         tokenized_lmdb_path: str,
         bert_tokenizer: str,
         cased: bool,
-        processes: int = cpu_count()
+        processes: int = cpu_count(),
+        dtype: str = 'uint16'
 ):
     """
     Tokenize all paragraphs in a LMDB database.
@@ -113,7 +114,9 @@ def tokenize_lmdb(
             yield key, value
 
     # Create database writer.
-    db_writer = Process(target=_write_db_subprocess, args=(tokenized_lmdb_path, tokenized_queue))
+    db_writer = Process(
+        target=_write_db_subprocess,
+        args=(tokenized_lmdb_path, tokenized_queue, numpy.dtype(dtype)))
     db_writer.start()
 
     # Create workers.
@@ -157,6 +160,8 @@ def _main():
                         help='Tokenizer should be case-sensitive.')
     parser.add_argument('--processes', '-p', type=int, default=cpu_count(),
                         help='Tokenizer should be case-sensitive.')
+    parser.add_argument('--dtype', '-dtype', type=str, default='uint16',
+                        help='Dtype of the stored numpy arrays.')
 
     args = parser.parse_args()
 
@@ -168,6 +173,7 @@ def _main():
         bert_tokenizer=args.tokenizer_path,
         processes=args.processes,
         cased=args.cased,
+        dtype=args.dtype,
     )
 
 
