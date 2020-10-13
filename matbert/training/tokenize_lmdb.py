@@ -43,7 +43,7 @@ def _tokenize_subprocess(tokenizer: BertTokenizerFast, semaphore: Semaphore,
 
 def _write_db_subprocess(tokenized_lmdb_path: str, writer_queue: Queue):
     dst_env = lmdb.open(
-        tokenized_lmdb_path, readonly=False, lock=True)
+        tokenized_lmdb_path, readonly=False, lock=True, map_size=1024 * 1024 * 1024 * 100)
     dst_txn = dst_env.begin(buffers=True, write=True)
 
     dst_meta = os.path.join(tokenized_lmdb_path, 'meta.txt')
