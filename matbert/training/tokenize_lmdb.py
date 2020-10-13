@@ -101,7 +101,7 @@ def tokenize_lmdb(
 
     src_env = lmdb.open(
         lmdb_path, readonly=True, lock=False)
-    src_txn = src_env.begin(buffers=False)
+    src_txn = src_env.begin(buffers=True)
 
     semaphore = Semaphore(4096)
     tokenized_queue = Queue()
@@ -111,7 +111,7 @@ def tokenize_lmdb(
             # If queue insertion is too fast, we get throttled.
             semaphore.acquire()
 
-            yield key, value
+            yield key.tobytes(), value.tobytes()
 
     # Create database writer.
     db_writer = Process(
