@@ -147,7 +147,9 @@ def tokenize_lmdb(
 def _main():
     parser = ArgumentParser(description='Tokenize paragraphs in a LMDB paragraphs database.')
 
-    parser.add_argument('--lmdb_path', '-lmdb', type=str, required=True,
+    parser.add_argument('--lmdb_path', '-input', type=str, required=True,
+                        help='Source folder of the LMDB database.')
+    parser.add_argument('--tokenized_lmdb_path', '-output', type=str, required=True,
                         help='Source folder of the LMDB database.')
     parser.add_argument('--tokenizer_path', '-tokenizer', type=str, required=True,
                         help='Folder that contains a BERT tokenizer.')
@@ -158,12 +160,11 @@ def _main():
 
     args = parser.parse_args()
 
-    dest_dir = os.path.join(args.lmdb_path, 'tokenized.lmdb')
-    assert not os.path.exists(dest_dir), f"Output dir {dest_dir} already exists!"
+    assert not os.path.exists(args.tokenized_lmdb_path), f"Output dir {args.tokenized_lmdb_path} already exists!"
 
     tokenize_lmdb(
         lmdb_path=args.lmdb_path,
-        tokenized_lmdb_path=dest_dir,
+        tokenized_lmdb_path=args.tokenized_lmdb_path,
         bert_tokenizer=args.tokenizer_path,
         processes=args.processes,
         cased=args.cased,
