@@ -48,7 +48,6 @@ def _write_db_subprocess(tokenized_lmdb_path: str, writer_queue: Queue):
 
     meta_maps = defaultdict(dict)
 
-    i = 0
     while True:
         # Main process sends None to indicate EOF.
         item = writer_queue.get()
@@ -65,9 +64,8 @@ def _write_db_subprocess(tokenized_lmdb_path: str, writer_queue: Queue):
         # Minus 2 since we have [CLS] and [SEP].
         meta_maps[doi][int(ip)] = token_ids.size - 2
 
-        i += 1
-        if i % 1000 == 0:
-            dst_txn.commit()
+    dst_txn.commit()
+    dst_env.close()
 
     with open(dst_meta, 'wb') as dst_meta_f:
         for doi, token_counts in meta_maps.items():
@@ -78,9 +76,6 @@ def _write_db_subprocess(tokenized_lmdb_path: str, writer_queue: Queue):
             dst_meta_f.write(b'\t')
             dst_meta_f.write(token_count_s)
             dst_meta_f.write(b'\n')
-
-        dst_txn.commit()
-        dst_env.close()
 
 
 def tokenize_lmdb(
@@ -107,7 +102,7 @@ def tokenize_lmdb(
         lmdb_path, readonly=True, lock=False)
     src_txn = src_env.begin(buffers=False)
 
-    semaphore = Semaphore(1000)
+    semaphore = Semaphore(4096)
     tokenized_queue = Queue()
 
     def _paragraph_generator():
