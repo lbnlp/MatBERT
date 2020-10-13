@@ -28,9 +28,10 @@ def prepare_for_tokenizer(
 
     try:
         with tqdm(desc='Dumping paragraphs', unit='B', unit_scale=True) as bar, \
-                open(pt_filename, 'wb') as meta_f:
+                open(pt_filename, 'wb') as f:
             for key, value in iter(txn.cursor()):
-                meta_f.write(value)
+                f.write(value)
+                f.write(b'\n')
                 bar.update(len(value) + 1)
         env.close()
     except:
