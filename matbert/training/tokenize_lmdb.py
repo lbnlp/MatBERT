@@ -1,5 +1,6 @@
 import os
 from argparse import ArgumentParser
+from collections import defaultdict
 from multiprocessing import Semaphore, cpu_count, Process, Queue
 
 import lmdb
@@ -31,14 +32,11 @@ def _tokenize_subprocess(tokenizer: BertTokenizerFast, semaphore: Semaphore,
         if item is None:
             break
 
-        doi, paragraphs = item
-        tokenized_paragraphs = []
-        for p in paragraphs:
-            tokens = tokenizer.tokenize(p, add_special_tokens=True)
-            token_ids = tokenizer.convert_tokens_to_ids(tokens)
-            tokenized_paragraphs.append(numpy.array(token_ids))
+        key, paragraph = item
+        tokens = tokenizer.tokenize(paragraph.decode('utf8'), add_special_tokens=True)
+        token_ids = numpy.array(tokenizer.convert_tokens_to_ids(tokens))
 
-        writer_queue.put((doi, tokenized_paragraphs))
+        writer_queue.put((key, token_ids))
 
 
 def _write_db_subprocess(tokenized_lmdb_path: str, writer_queue: Queue):
@@ -48,22 +46,38 @@ def _write_db_subprocess(tokenized_lmdb_path: str, writer_queue: Queue):
 
     dst_meta = os.path.join(tokenized_lmdb_path, 'meta.txt')
 
-    with open(dst_meta, 'w') as dst_meta_f:
-        while True:
-            # Main process sends None to indicate EOF.
-            item = writer_queue.get()
-            if item is None:
-                break
+    meta_maps = defaultdict(dict)
 
-            # Using a consistent dtype long so that trainer can directly use the
-            # mapped memory to create arrays.
-            doi, tokenized_paragraphs = item
-            for i, p in enumerate(tokenized_paragraphs):
-                dst_txn.put(f"{doi} {i}".encode('utf8'), p.astype(numpy.long).tobytes())
+    i = 0
+    while True:
+        # Main process sends None to indicate EOF.
+        item = writer_queue.get()
+        if item is None:
+            break
 
-            # Minus 2 since we have [CLS] and [SEP].
-            paragraph_lens = map(str, [x.size - 2 for x in tokenized_paragraphs])
-            dst_meta_f.write(f'{doi}\t{",".join(paragraph_lens)}\n')
+        # Using a consistent dtype long so that trainer can directly use the
+        # mapped memory to create arrays.
+        key, token_ids = item
+        doi, ip = key.split(b' ')
+
+        dst_txn.put(key, token_ids.astype(numpy.long).tobytes())
+
+        # Minus 2 since we have [CLS] and [SEP].
+        meta_maps[doi][int(ip)] = token_ids.size - 2
+
+        i += 1
+        if i % 1000 == 0:
+            dst_txn.commit()
+
+    with open(dst_meta, 'wb') as dst_meta_f:
+        for doi, token_counts in meta_maps.items():
+            token_count_s = b','.join(
+                f'{ip}:{c}'.encode('utf8')
+                for ip, c in sorted(token_counts.items()))
+            dst_meta_f.write(doi)
+            dst_meta_f.write(b'\t')
+            dst_meta_f.write(token_count_s)
+            dst_meta_f.write(b'\n')
 
         dst_txn.commit()
         dst_env.close()
@@ -90,27 +104,18 @@ def tokenize_lmdb(
         bert_tokenizer, do_lower_case=not cased)
 
     src_env = lmdb.open(
-        lmdb_path, readonly=True, lock=True)
-    src_txn = src_env.begin(buffers=True)
-
-    src_meta = os.path.join(lmdb_path, 'meta.txt')
+        lmdb_path, readonly=True, lock=False)
+    src_txn = src_env.begin(buffers=False)
 
     semaphore = Semaphore(1000)
     tokenized_queue = Queue()
 
     def _paragraph_generator():
-        with open(src_meta) as src_meta_f:
-            for line in src_meta_f:
-                # If queue insertion is too fast, we get throttled.
-                semaphore.acquire()
+        for key, value in iter(src_txn.cursor()):
+            # If queue insertion is too fast, we get throttled.
+            semaphore.acquire()
 
-                paragraphs = []
-                doi, np = line.split('\t')
-                for i in range(int(np)):
-                    key = f'{doi} {i}'.encode('utf8')
-                    paragraph = src_txn.get(key).tobytes().decode('utf8')
-                    paragraphs.append(paragraph)
-                yield doi, paragraphs
+            yield key, value
 
     # Create database writer.
     db_writer = Process(target=_write_db_subprocess, args=(tokenized_lmdb_path, tokenized_queue))

@@ -23,7 +23,7 @@ def prepare_for_tokenizer(
     assert not os.path.exists(pt_filename), f"Plain text file {pt_filename} already exists! Delete it first."
 
     env = lmdb.open(
-        lmdb_path, readonly=True, lock=True)
+        lmdb_path, readonly=True, lock=False)
     txn = env.begin(buffers=True)
 
     try:
