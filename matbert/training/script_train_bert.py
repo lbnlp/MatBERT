@@ -10,7 +10,7 @@ from transformers import (
 from transformers import Trainer, TrainingArguments
 
 from matbert.training.dataset import SynthesisParagraphsDataset
-from matbert.training.options import parse_with_config, TrainingOpts
+from matbert.training.options import parse_with_config, AllOpts
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
@@ -31,7 +31,7 @@ class MyTrainer(Trainer):
         setattr(self, '_last_epoch', self.epoch)
 
 
-def prepare_model(opts: TrainingOpts) -> Tuple[BertForMaskedLM, str, int]:
+def prepare_model(opts: AllOpts) -> Tuple[BertForMaskedLM, str, int]:
     config = BertConfig(**opts.bert_config)
 
     checkpoints = list(map(str, Path(opts.output_dir).glob("checkpoint-*")))

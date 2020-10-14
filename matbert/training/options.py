@@ -8,7 +8,10 @@ __author__ = 'Haoyan Huo'
 __email__ = 'haoyan.huo@lbl.gov'
 __maintainer__ = 'Haoyan Huo'
 
-__all__ = ['DataOpts', 'ModelOpts', 'TrainingOpts', 'parse_with_config']
+__all__ = [
+    'DataOpts', 'ModelOpts', 'TrainingOpts', 'MiscOpts',
+    'AllOpts', 'parse_with_config'
+]
 
 
 @dataclass
@@ -56,7 +59,7 @@ class ModelOpts:
 
 
 @dataclass
-class TrainingOpts(ModelOpts, DataOpts):
+class TrainingOpts:
     mlm_probability: float = field(
         default=0.15,
         metadata={"help": "Ratio of tokens to mask for masked language modeling loss."}
@@ -92,8 +95,13 @@ class MiscOpts:
     )
 
 
-def parse_with_config() -> TrainingOpts:
-    parser = HfArgumentParser(TrainingOpts)
+@dataclass
+class AllOpts(ModelOpts, DataOpts, TrainingOpts, MiscOpts):
+    pass
+
+
+def parse_with_config() -> AllOpts:
+    parser = HfArgumentParser(AllOpts)
     opts = vars(parser.parse_args())
 
     if opts['config'] is not None:
@@ -102,4 +110,4 @@ def parse_with_config() -> TrainingOpts:
             for key, value in config.items():
                 opts[key] = value
 
-    return TrainingOpts(**opts)
+    return AllOpts(**opts)
