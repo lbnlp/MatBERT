@@ -18,18 +18,26 @@ class SynthesisParagraphsDataset(Dataset):
     def __init__(self,
                  training_lmdb: str,
                  skip: int = 0,
+                 min_tokens: int = 22,
                  max_tokens: int = 512):
         """
         Constructor.
 
         :param training_lmdb: Path to a tokenized paragraphs database.
         :param skip: How many samples to skip.
+        :param min_tokens: Minimal number of tokens.
         :param max_tokens: Maximal number of tokens to keep.
         """
 
         self.db_env = lmdb.open(
             training_lmdb, readonly=True, readahead=False, lock=False)
         self.db_txn = self.db_env.begin(buffers=True)
+
+        self.skip = skip
+        if skip:
+            logging.info('Skipping %d items in the current epoch', self.skip)
+        self.min_tokens = min_tokens
+        self.max_tokens = max_tokens
 
         meta_fn = os.path.join(training_lmdb, 'meta.txt')
         dois, token_counts = self._load_token_counts(meta_fn)
@@ -40,13 +48,7 @@ class SynthesisParagraphsDataset(Dataset):
         with open(dtype_fn) as f:
             self.dtype = numpy.dtype(f.read().strip())
 
-        self.skip = skip
-        if skip:
-            logging.info('Skipping %d items in the current epoch', self.skip)
-        self.max_tokens = max_tokens
-
-    @staticmethod
-    def _load_token_counts(meta_fn: str):
+    def _load_token_counts(self, meta_fn: str):
         """
         Load token count stats from meta file.
         The meta file will have a format like this:
@@ -68,7 +70,8 @@ class SynthesisParagraphsDataset(Dataset):
 
                 for _token_count in _token_counts.split(b','):
                     ip, count = _token_count.split(b':')
-                    token_counts.append((i, ip, int(count)))
+                    if count >= self.min_tokens:
+                        token_counts.append((i, ip, int(count)))
         return dois, token_counts
 
     def __len__(self):
@@ -90,6 +93,6 @@ class SynthesisParagraphsDataset(Dataset):
         if paragraph_tokens_array.size > self.max_tokens:
             # Keep the last element because we need [SEP]
             paragraph_tokens_array = numpy.concatenate(
-                (paragraph_tokens_array[:self.max_tokens-1], paragraph_tokens_array[-1:])
+                (paragraph_tokens_array[:self.max_tokens - 1], paragraph_tokens_array[-1:])
             )
         return torch.tensor(paragraph_tokens_array, dtype=torch.long)
