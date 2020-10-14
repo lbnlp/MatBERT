@@ -45,6 +45,10 @@ def _write_db_subprocess(tokenized_lmdb_path: str, writer_queue: Queue, dtype: n
     dst_txn = dst_env.begin(buffers=True, write=True)
 
     dst_meta = os.path.join(tokenized_lmdb_path, 'meta.txt')
+    dtype_meta = os.path.join(tokenized_lmdb_path, 'dtype.txt')
+
+    with open(dtype_meta, 'w') as f:
+        f.write(str(dtype))
 
     meta_maps = defaultdict(dict)
 
@@ -94,10 +98,16 @@ def tokenize_lmdb(
     :param bert_tokenizer: Folder that contains a bert tokenizer.
     :param cased: Whether the tokenizer is cased.
     :param processes: Number of processes to use.
+    :param dtype: What dtype to use in database (affects database size).
     :return:
     """
     tokenizer = BertTokenizerFast.from_pretrained(
         bert_tokenizer, do_lower_case=not cased)
+
+    dtype = numpy.dtype(dtype)
+
+    assert tokenizer.vocab_size < numpy.iinfo(dtype).max, \
+        f"Vocabulary size is greater than the maximum of dtyle {dtype}"
 
     src_env = lmdb.open(
         lmdb_path, readonly=True, lock=False)
@@ -116,7 +126,7 @@ def tokenize_lmdb(
     # Create database writer.
     db_writer = Process(
         target=_write_db_subprocess,
-        args=(tokenized_lmdb_path, tokenized_queue, numpy.dtype(dtype)))
+        args=(tokenized_lmdb_path, tokenized_queue, dtype))
     db_writer.start()
 
     # Create workers.

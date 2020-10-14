@@ -1,18 +1,13 @@
-import functools
 import logging
 import math
 import os
 from dataclasses import dataclass, field
-from multiprocessing import Pool
 from pathlib import Path
-from typing import Optional, List, Union
+from typing import Optional
 
-import torch
-from torch.utils.data import Dataset
-from tqdm import tqdm
 from transformers import (
     BertConfig, BertTokenizerFast, BertForMaskedLM,
-    DataCollatorForLanguageModeling, PreTrainedTokenizer, HfArgumentParser)
+    DataCollatorForLanguageModeling, HfArgumentParser)
 from transformers import Trainer, TrainingArguments
 
 logger = logging.getLogger(__name__)
@@ -76,118 +71,6 @@ class TrainingOptions:
         default=False,
         metadata={"help": "Use fp16 training."},
     )
-
-
-class SynthesisParagraphsDataset(Dataset):
-    def __init__(self,
-                 tokenizer: PreTrainedTokenizer,
-                 training_lmdb: str, block_size: int,
-                 batch_size: int = 1):
-        assert os.path.isdir(train_data_dir)
-        self.block_size = block_size
-        self.examples_meta = []
-        self.examples: List[Union[bytes, List[int]]] = []
-        self.tokenizer = tokenizer
-        self.skip = skip
-
-        for path in Path(train_data_dir).glob("*.meta"):
-            path = str(path)
-            examples_meta, examples = self._load_data(path)
-            self.examples_meta.extend(examples_meta)
-            self.examples.extend(examples)
-
-        self.skip = self.skip % (len(self.examples) / batch_size)
-        if skip:
-            logger.info('Skipping %d steps in the current epoch', self.skip)
-
-    def _load_data(self, meta_fn):
-        cache_file = meta_fn.rsplit('.', maxsplit=1)[0] + '.cache'
-
-        if not os.path.exists(cache_file):
-            self._prepare_cache(meta_fn)
-
-        examples_meta = []
-        examples = []
-        with open(cache_file, 'rb') as f:
-            while True:
-                line = f.readline()
-                if not line.strip():
-                    break
-                doi, n_paragraphs = line.strip().split()
-                doi = doi.decode()
-                n_paragraphs = int(n_paragraphs)
-                for i in range(n_paragraphs):
-                    examples.append(f.readline())
-                examples_meta.append((doi, n_paragraphs))
-
-        logger.info('Loaded %d examples from %s', len(examples), cache_file)
-        return examples_meta, examples
-
-    def _process_paper(self, arg):
-        doi, paragraphs = arg
-        tokenized_paragraphs = []
-
-        for tokenized in map(
-                functools.partial(
-                    self.tokenizer, add_special_tokens=True,
-                    truncation=True,
-                    max_length=512), paragraphs):
-            if len(tokenized['input_ids']) >= 20:
-                tokenized_paragraphs.append(list(tokenized['input_ids']))
-
-        if tokenized_paragraphs:
-            return doi, tokenized_paragraphs
-        else:
-            return None
-
-    def _prepare_cache(self, meta_fn):
-        cache_file = meta_fn.rsplit('.', maxsplit=1)[0] + '.cache'
-        if os.path.exists(cache_file):
-            return
-
-        paragraphs_file = meta_fn.rsplit('.', maxsplit=1)[0] + '.txt'
-
-        total = 0
-        with open(meta_fn, encoding='utf8') as f, \
-                open(paragraphs_file, encoding='utf8') as p, \
-                open(cache_file, 'w') as fout, \
-                Pool(processes=10) as pool:
-            def iterator_docs():
-                for line in f:
-                    if not line.strip():
-                        continue
-
-                    doi, n_paragraphs = line.strip().split()
-                    n_paragraphs = int(n_paragraphs)
-
-                    paragraphs = [p.readline().strip() for _ in range(n_paragraphs)]
-                    yield doi, paragraphs
-
-            for i in tqdm(pool.imap(self._process_paper, iterator_docs(), chunksize=5)):
-                if i is None:
-                    continue
-                total += len(i[1])
-                fout.write('%s\t%d\n' % (i[0], len(i[1])))
-                for j in i[1]:
-                    fout.write(' '.join(map(str, j)))
-                    fout.write('\n')
-
-        logger.info('Created cache for %d examples to %s', total, meta_fn)
-
-    def __len__(self):
-        return len(self.examples)
-
-    zero_tensor = torch.tensor([0], dtype=torch.long)
-
-    def __getitem__(self, i) -> torch.Tensor:
-        if self.skip > 0:
-            self.skip -= 1
-            return self.zero_tensor
-
-        if isinstance(self.examples[i], bytes):
-            self.examples[i] = list(map(int, self.examples[i].strip().split()))
-        return torch.tensor(self.examples[i], dtype=torch.long)
-
 
 def main():
     parser = HfArgumentParser((ModelArguments, DataTrainingArguments, TrainingOptions))
