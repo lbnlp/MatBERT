@@ -30,7 +30,7 @@ class SynthesisParagraphsDataset(Dataset):
         """
 
         self.db_env = lmdb.open(
-            training_lmdb, readonly=True, readahead=False, lock=False)
+            training_lmdb, readonly=True, readahead=True, lock=False)
         self.db_txn = self.db_env.begin(buffers=True)
 
         self._skip = 0
@@ -90,8 +90,8 @@ class SynthesisParagraphsDataset(Dataset):
     zero_tensor = torch.tensor([0], dtype=torch.long)
 
     def __getitem__(self, i) -> torch.Tensor:
-        if self.skip > 0:
-            self.skip -= 1
+        if self._skip > 0:
+            self._skip -= 1
             return self.zero_tensor
 
         doi_i, ip, count = self.token_counts[i]
