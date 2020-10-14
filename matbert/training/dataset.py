@@ -70,8 +70,9 @@ class SynthesisParagraphsDataset(Dataset):
 
                 for _token_count in _token_counts.split(b','):
                     ip, count = _token_count.split(b':')
+                    count = int(count)
                     if count >= self.min_tokens:
-                        token_counts.append((i, ip, int(count)))
+                        token_counts.append((i, ip, count))
         return dois, token_counts
 
     def __len__(self):
