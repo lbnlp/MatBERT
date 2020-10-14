@@ -33,9 +33,8 @@ class SynthesisParagraphsDataset(Dataset):
             training_lmdb, readonly=True, readahead=False, lock=False)
         self.db_txn = self.db_env.begin(buffers=True)
 
+        self._skip = 0
         self.skip = skip
-        if skip:
-            logging.info('Skipping %d items in the current epoch', self.skip)
         self.min_tokens = min_tokens
         self.max_tokens = max_tokens
 
@@ -47,6 +46,16 @@ class SynthesisParagraphsDataset(Dataset):
         dtype_fn = os.path.join(training_lmdb, 'dtype.txt')
         with open(dtype_fn) as f:
             self.dtype = numpy.dtype(f.read().strip())
+
+    @property
+    def skip(self):
+        return self._skip
+
+    @skip.setter
+    def skip(self, s: int):
+        self._skip = s
+        if self._skip:
+            logging.info('Skipping %d items in the current epoch', self.skip)
 
     def _load_token_counts(self, meta_fn: str):
         """

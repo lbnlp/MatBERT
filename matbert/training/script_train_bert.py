@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 from typing import Tuple
 
+import torch.distributed as dist
 from transformers import (
     BertConfig, BertTokenizerFast, BertForMaskedLM,
     DataCollatorForLanguageModeling)
@@ -31,7 +32,7 @@ class MyTrainer(Trainer):
         setattr(self, '_last_epoch', self.epoch)
 
 
-def prepare_model(opts: AllOpts) -> Tuple[BertForMaskedLM, str]:
+def prepare_model(opts: AllOpts) -> Tuple[BertForMaskedLM, str, int]:
     config = BertConfig(**opts.bert_config)
 
     checkpoints = list(map(str, Path(opts.output_dir).glob("checkpoint-*")))
@@ -41,13 +42,13 @@ def prepare_model(opts: AllOpts) -> Tuple[BertForMaskedLM, str]:
         latest_global_step = max(checkpoint_steps)
         checkpoint_dir = os.path.join(
             opts.output_dir, 'checkpoint-%d' % latest_global_step)
-
         model = BertForMaskedLM.from_pretrained(checkpoint_dir, config=config)
     else:
         checkpoint_dir = None
+        latest_global_step = 0
         model = BertForMaskedLM(config=config)
 
-    return model, checkpoint_dir
+    return model, checkpoint_dir, latest_global_step
 
 
 def main():
@@ -67,6 +68,7 @@ def main():
         output_dir=opts.output_dir,
         overwrite_output_dir=True,
         num_train_epochs=opts.num_train_epochs,
+        dataloader_drop_last=True,
         gradient_accumulation_steps=opts.gradient_accumulation_steps,
         per_device_train_batch_size=opts.per_device_train_batch_size,
         save_steps=opts.save_steps,
@@ -82,7 +84,7 @@ def main():
         eval_steps=1,
     )
 
-    model, checkpoint_dir = prepare_model(opts)
+    model, checkpoint_dir, latest_global_step = prepare_model(opts)
     logger.info('Loaded model from %s', checkpoint_dir)
 
     dataset = SynthesisParagraphsDataset(
@@ -94,6 +96,20 @@ def main():
         mlm=True,
         mlm_probability=opts.mlm_probability,
     )
+
+    # Recover how many samples to skip
+    if opts.local_rank > -1:
+        num_replicas = dist.get_world_size()
+        local_data_size = int(math.ceil(len(dataset) * 1.0 / num_replicas))
+    else:
+        local_data_size = len(dataset)
+    local_batches = local_data_size // opts.per_device_train_batch_size
+    steps_trained_in_current_epoch = latest_global_step % (
+            local_batches // opts.gradient_accumulation_steps
+    )
+    dataset.skip = steps_trained_in_current_epoch * \
+                   opts.gradient_accumulation_steps * \
+                   opts.per_device_train_batch_size
 
     trainer = MyTrainer(
         model=model,
