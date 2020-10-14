@@ -1,7 +1,7 @@
 {
   "tokenized_lmdb_path": "data_2Mpapers_tokenized_uncased_30522.lmdb",
   "tokenizer_path": "tokenizer_uncased_30522",
-  "cased": true,
+  "cased": false,
   "output_dir": "model_2Mpapers_uncased_30522",
   "bert_config": {
     "vocab_size": 30522,
