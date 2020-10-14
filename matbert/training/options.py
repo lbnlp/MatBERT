@@ -93,6 +93,10 @@ class MiscOpts:
         default=False,
         metadata={"help": "Use fp16 training."},
     )
+    fp16_opt_level: str = field(
+        default='O1',
+        metadata={"help": "Level of AMP optimization."}
+    )
     local_rank: int = field(
         default=-1,
         metadata={"help": "Local rank in a distributed context."}

@@ -76,6 +76,7 @@ def main():
         save_total_limit=opts.save_total_limit,
         logging_dir=opts.logging_dir or os.path.join(opts.output_dir, 'run-logs'),
         fp16=opts.fp16,
+        fp16_opt_level=opts.fp16_opt_level,
         seed=opts.seed,
         local_rank=opts.local_rank,
 

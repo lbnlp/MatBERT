@@ -24,6 +24,7 @@
   "gradient_accumulation_steps": 2,
   "num_train_epochs": 5,
   "save_steps": 20000,
-  "fp16": false,
+  "fp16": true,
+  "fp16_opt_level": "O2",
   "seed": 42
 }
