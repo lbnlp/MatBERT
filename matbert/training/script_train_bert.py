@@ -1,14 +1,16 @@
 import logging
 import math
 import os
-from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
+from typing import Tuple
 
 from transformers import (
     BertConfig, BertTokenizerFast, BertForMaskedLM,
-    DataCollatorForLanguageModeling, HfArgumentParser)
+    DataCollatorForLanguageModeling)
 from transformers import Trainer, TrainingArguments
+
+from matbert.training.dataset import SynthesisParagraphsDataset
+from matbert.training.options import parse_with_config, TrainingOpts
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
@@ -18,119 +20,84 @@ logging.basicConfig(
 )
 
 
-@dataclass
-class ModelArguments:
-    model_name_or_path: Optional[str] = field(
-        default=None,
-        metadata={"help": "Model checkpoint."},
-    )
-    model_type: Optional[str] = field(
-        default=None,
-        metadata={"help": "Model name if training from scratch"},
-    )
+class MyTrainer(Trainer):
+    # Hack function used to save models at the end of every epoch.
+    def evaluate(self, eval_dataset=None):
+        if hasattr(self, '_last_epoch'):
+            if math.floor(self.epoch) != math.floor(self._last_epoch):
+                save_path = os.path.join(self.args.output_dir, 'epoch_save_%d' % int(math.floor(self._last_epoch)))
+                self.save_model(save_path)
+
+        setattr(self, '_last_epoch', self.epoch)
 
 
-@dataclass
-class DataTrainingArguments:
-    train_data_dir: Optional[str] = field(
-        metadata={"help": "The input training data file (a text file)."}
-    )
-    mlm_probability: float = field(
-        default=0.15, metadata={"help": "Ratio of tokens to mask for masked language modeling loss"}
-    )
-    block_size: int = field(
-        default=512,
-        metadata={"help": "Size of input tensor size"},
-    )
+def prepare_model(opts: TrainingOpts) -> Tuple[BertForMaskedLM, str, int]:
+    config = BertConfig(**opts.bert_config)
 
+    checkpoints = list(map(str, Path(opts.output_dir).glob("checkpoint-*")))
 
-@dataclass
-class TrainingOptions:
-    output_dir: Optional[str] = field(
-        metadata={"help": "Model output dir."}
-    )
-    checkpoint_dir: Optional[str] = field(
-        default=None, metadata={"help": "Checkpoint dir to start from."}
-    )
-    logging_dir: Optional[str] = field(
-        default=None, metadata={"help": "Logging dir, default will be the run-logs in output_dir."}
-    )
-    per_device_train_batch_size: Optional[int] = field(
-        default=8, metadata={"help": "Batch size of each device."}
-    )
-    num_train_epochs: Optional[int] = field(
-        default=5, metadata={"help": "Number of training epochs."}
-    )
-    save_total_limit: Optional[int] = field(
-        default=2, metadata={"help": "Number of intermediate models to keep."}
-    )
-    save_steps: Optional[int] = field(
-        default=10_000, metadata={"help": "Steps to save between checkpoints."}
-    )
-    fp16: bool = field(
-        default=False,
-        metadata={"help": "Use fp16 training."},
-    )
+    if opts.load_checkpoint and len(checkpoints) > 0:
+        checkpoint_steps = [int(x.rsplit('-')[1]) for x in checkpoints]
+        latest_global_step = max(checkpoint_steps)
+        checkpoint_dir = os.path.join(
+            opts.output_dir, 'checkpoint-%d' % latest_global_step)
+
+        model = BertForMaskedLM.from_pretrained(checkpoint_dir, config=config)
+
+        skip_samples = latest_global_step * opts.per_device_train_batch_size
+    else:
+        checkpoint_dir = None
+        skip_samples = 0
+        model = BertForMaskedLM(config=config)
+
+    return model, checkpoint_dir, skip_samples
+
 
 def main():
-    parser = HfArgumentParser((ModelArguments, DataTrainingArguments, TrainingOptions))
-    model_args, data_args, training_args = parser.parse_args_into_dataclasses()
+    opts = parse_with_config()
 
-    tokenizer = BertTokenizerFast.from_pretrained('./synthesis-bert-model', do_lower_case=False)
+    assert os.path.exists(opts.tokenizer_path), \
+        "Tokenizer (--tokenizer_path) not specified or does not exist!"
+    assert os.path.exists(opts.tokenized_lmdb_path), \
+        "Training data (--tokenized_lmdb_path) not specified or does not exist!"
+    assert opts.output_dir is not None, \
+        "Output dir (--output_dir) is None!"
 
-    config = BertConfig(
-        num_hidden_layers=12
-    )
+    tokenizer = BertTokenizerFast.from_pretrained(
+        opts.tokenizer_path, do_lower_case=not opts.cased)
 
     trainer_arguments = TrainingArguments(
-        output_dir=training_args.output_dir,
+        output_dir=opts.output_dir,
         overwrite_output_dir=True,
-        num_train_epochs=training_args.num_train_epochs,
-        per_device_train_batch_size=training_args.per_device_train_batch_size,
-        save_steps=training_args.save_steps,
-        save_total_limit=training_args.save_total_limit,
-        logging_dir=training_args.logging_dir or os.path.join(training_args.output_dir, 'run-logs'),
-        fp16=training_args.fp16,
+        num_train_epochs=opts.num_train_epochs,
+        gradient_accumulation_steps=opts.gradient_accumulation_steps,
+        per_device_train_batch_size=opts.per_device_train_batch_size,
+        save_steps=opts.save_steps,
+        save_total_limit=opts.save_total_limit,
+        logging_dir=opts.logging_dir or os.path.join(opts.output_dir, 'run-logs'),
+        fp16=opts.fp16,
+        seed=opts.seed,
+
+        # A nice hack for storing models every epoch. See below
         evaluate_during_training=True,
         eval_steps=1,
     )
 
-    checkpoint_dir = training_args.checkpoint_dir
-    skip_samples = 0
-    if checkpoint_dir is None:
-        checkpoints = [int(str(x).split('-')[-1]) for x in Path(training_args.output_dir).glob("checkpoint-*")]
-        if checkpoints:
-            skip_samples = max(checkpoints)
-            checkpoint_dir = os.path.join(training_args.output_dir, 'checkpoint-%d' % max(checkpoints))
+    model, checkpoint_dir, skip_samples = prepare_model(opts)
+    logger.info('Loaded model from %s', checkpoint_dir)
 
-    if checkpoint_dir:
-        model = BertForMaskedLM.from_pretrained(checkpoint_dir)
-    else:
-        model = BertForMaskedLM(config=config)
     dataset = SynthesisParagraphsDataset(
-        tokenizer=tokenizer,
-        train_data_dir=data_args.train_data_dir,
-        block_size=data_args.block_size,
-        skip=trainer_arguments.train_batch_size * skip_samples,
-        batch_size=trainer_arguments.gradient_accumulation_steps
+        training_lmdb=opts.tokenized_lmdb_path,
+        skip=skip_samples,
+        max_tokens=model.config.max_position_embeddings
     )
     data_collator = DataCollatorForLanguageModeling(
         tokenizer=tokenizer,
         mlm=True,
-        mlm_probability=data_args.mlm_probability,
+        mlm_probability=opts.mlm_probability,
     )
 
-    def save_every_epoch(self: Trainer):
-        if hasattr(self, '_last_epoch'):
-            if math.floor(self.epoch) != math.floor(self._last_epoch):
-                save_path = os.path.join(training_args.output_dir, 'epoch_save_%d' % int(math.floor(self._last_epoch)))
-                self.save_model(save_path)
-
-        self._last_epoch = self.epoch
-
-    Trainer.evaluate = save_every_epoch
-
-    trainer = Trainer(
+    trainer = MyTrainer(
         model=model,
         args=trainer_arguments,
         data_collator=data_collator,
@@ -139,8 +106,7 @@ def main():
     )
 
     trainer.train(checkpoint_dir)
-
-    trainer.save_model(training_args.output_dir)
+    trainer.save_model(opts.output_dir)
 
 
 if __name__ == '__main__':
