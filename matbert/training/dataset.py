@@ -38,7 +38,7 @@ class SynthesisParagraphsDataset(Dataset):
 
         dtype_fn = os.path.join(training_lmdb, 'dtype.txt')
         with open(dtype_fn) as f:
-            self.dtype = numpy.dtype(f.read())
+            self.dtype = numpy.dtype(f.read().strip())
 
         self.skip = skip
         if skip:

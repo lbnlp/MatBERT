@@ -77,6 +77,7 @@ def main():
         logging_dir=opts.logging_dir or os.path.join(opts.output_dir, 'run-logs'),
         fp16=opts.fp16,
         seed=opts.seed,
+        local_rank=opts.local_rank,
 
         # A nice hack for storing models every epoch. See below
         evaluate_during_training=True,

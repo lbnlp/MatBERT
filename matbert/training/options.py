@@ -93,6 +93,10 @@ class MiscOpts:
         default=False,
         metadata={"help": "Use fp16 training."},
     )
+    local_rank: int = field(
+        default=-1,
+        metadata={"help": "Local rank in a distributed context."}
+    )
 
 
 @dataclass
