@@ -31,7 +31,7 @@ class MyTrainer(Trainer):
         setattr(self, '_last_epoch', self.epoch)
 
 
-def prepare_model(opts: AllOpts) -> Tuple[BertForMaskedLM, str, int]:
+def prepare_model(opts: AllOpts) -> Tuple[BertForMaskedLM, str]:
     config = BertConfig(**opts.bert_config)
 
     checkpoints = list(map(str, Path(opts.output_dir).glob("checkpoint-*")))
@@ -43,14 +43,11 @@ def prepare_model(opts: AllOpts) -> Tuple[BertForMaskedLM, str, int]:
             opts.output_dir, 'checkpoint-%d' % latest_global_step)
 
         model = BertForMaskedLM.from_pretrained(checkpoint_dir, config=config)
-
-        skip_samples = latest_global_step * opts.per_device_train_batch_size
     else:
         checkpoint_dir = None
-        skip_samples = 0
         model = BertForMaskedLM(config=config)
 
-    return model, checkpoint_dir, skip_samples
+    return model, checkpoint_dir
 
 
 def main():
@@ -85,12 +82,11 @@ def main():
         eval_steps=1,
     )
 
-    model, checkpoint_dir, skip_samples = prepare_model(opts)
+    model, checkpoint_dir = prepare_model(opts)
     logger.info('Loaded model from %s', checkpoint_dir)
 
     dataset = SynthesisParagraphsDataset(
         training_lmdb=opts.tokenized_lmdb_path,
-        skip=skip_samples,
         max_tokens=model.config.max_position_embeddings
     )
     data_collator = DataCollatorForLanguageModeling(
