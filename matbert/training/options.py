@@ -112,8 +112,6 @@ def parse_with_config() -> AllOpts:
         with open(opts['config']) as f:
             config = json.load(f)
             for key, value in config.items():
-                if key not in opts:
-                    opts[key] = value
-    del opts['config']
+                opts[key] = value
 
     return AllOpts(**opts)
