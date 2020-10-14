@@ -98,6 +98,8 @@ def main():
     )
 
     # Recover how many samples to skip
+    # Need to call trainer_arguments.device to setup pytorch.
+    _ = trainer_arguments.device
     if opts.local_rank > -1:
         num_replicas = dist.get_world_size()
         local_data_size = int(math.ceil(len(dataset) * 1.0 / num_replicas))
