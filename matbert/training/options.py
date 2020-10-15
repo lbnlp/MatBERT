@@ -77,6 +77,10 @@ class TrainingOpts:
         default=1,
         metadata={"help": "Number of steps between gradient accumulation steps."}
     )
+    dataloader_drop_last: bool = field(
+        default=True,
+        metadata={"help": "Whether to drop the last incomplete batch in training set."}
+    )
 
 
 @dataclass
