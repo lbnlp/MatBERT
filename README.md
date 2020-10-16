@@ -50,3 +50,22 @@ Then, load the model using Transformers:
   'token': 2880,
   'token_str': 'thermal'}]
 ```
+
+## Details of the training
+
+Training of all MatBERT models was done using `transformers==3.3.1`.
+The corpus of this training contains 2 million papers collected by the
+text-mining efforts at [CEDER group](https://ceder.berkeley.edu/). In
+total, we had collected 61,253,938 paragraphs, from which around 50 million
+paragraphs with 20-510 tokens are filtered and used for training. Two WordPiece
+tokenizers (cased and uncased) that are optimized for materials science 
+literature was trained using these paragraphs.
+
+For training MatBERT, the config files we used were [bert-base-uncased](matbert/training/configs/bert-base-uncased.json)
+and [bert-base-cased](matbert/training/configs/bert-base-cased.json).
+Only the masked language modeling (MLM) task was used to pretrain MatBERT models.
+Roughly the batch size is 192 paragraphs per gradient update step and there are
+5 epochs in total. Learning rates start with 5e-5 and decays linearly to zero
+as the training finishes. All models are trained using FP16 mode and O2 optimization 
+on 8 NVIDIA V100 cards.
+

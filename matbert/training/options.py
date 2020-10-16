@@ -81,6 +81,10 @@ class TrainingOpts:
         default=True,
         metadata={"help": "Whether to drop the last incomplete batch in training set."}
     )
+    weight_decay: float = field(
+        default=0.0,
+        metadata={"help": "Weight decay of Adam optimizer."}
+    )
 
 
 @dataclass

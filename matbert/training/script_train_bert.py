@@ -70,6 +70,7 @@ def main():
         num_train_epochs=opts.num_train_epochs,
         gradient_accumulation_steps=opts.gradient_accumulation_steps,
         per_device_train_batch_size=opts.per_device_train_batch_size,
+        weight_decay=opts.weight_decay,
         dataloader_drop_last=opts.dataloader_drop_last,
         save_steps=opts.save_steps,
         save_total_limit=opts.save_total_limit,

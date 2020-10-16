@@ -3,4 +3,4 @@ numpy
 pymongo
 torch
 tqdm
-transformers
+transformers==3.3.1
