@@ -1,5 +1,5 @@
 # MatBERT
-A pretrained BERT model on materials science literature
+A pretrained BERT model on materials science literature.
 
 ## Downloading data files
 
@@ -7,7 +7,7 @@ MatBERT is now "semi-public" in the sense that everyone can download
 the model files, but we don't want too many people have access these
 download links now.
 
-To use MatBERT, first download these files into a folder:
+To use MatBERT, download these files into a folder:
 
 ```
 export MODEL_PATH="Your path"
@@ -16,42 +16,69 @@ curl -# -o $MODEL_PATH/vocab.txt https://cedergroup-share.s3-us-west-2.amazonaws
 curl -# -o $MODEL_PATH/pytorch_model.bin https://cedergroup-share.s3-us-west-2.amazonaws.com/public/MatBERT/pytorch_model.bin
 ```
 
-Then, load the model using Transformers:
+## Using MatBERT
+
+### Tokenizers
+
+The tokenizer is specifically trained to handle materials science terminologies:
 
 ```python
+>>> from transformers import BertTokenizerFast
+>>> tokenizer = BertTokenizerFast.from_pretrained('PATH-TO-MATBERT/matbert-base-cased', do_lower_case=False)
+>>> tokenizer_bert = BertTokenizerFast.from_pretrained('bert-base-cased', do_lower_case=False)
+
+>>> for i in ['Fe(NO3)3• 9H2O', 'La0.85Ag0.15Mn1−yAlyO3']:
+>>>     print(i)
+>>>     print('='*100)
+>>>     print('MatBERT tokenizer:', tokenizer.tokenize(i))
+>>>     print('BERT tokenizer:', tokenizer_bert.tokenize(i))
+
+Fe(NO3)3• 9H2O
+====================================================================================================
+MatBERT tokenizer: ['Fe', '(', 'NO3', ')', '3', '•', '9H2O']
+BERT tokenizer: ['Fe', '(', 'NO', '##3', ')', '3', '•', '9', '##H', '##2', '##O']
+La0.85Ag0.15Mn1−yAlyO3
+====================================================================================================
+MatBERT tokenizer: ['La0', '.', '85', '##Ag', '##0', '.', '15', '##Mn1', '##−y', '##Al', '##y', '##O3']
+BERT tokenizer: ['La', '##0', '.', '85', '##A', '##g', '##0', '.', '15', '##M', '##n', '##1', '##−', '##y', '##A', '##ly', '##O', '##3']
+```
+
+### The model
+
+The model can be loaded using Transformers' unversal loading API:
+
+```python
+>>> from transformers import BertForMaskedLM, BertTokenizerFast, pipeline
 >>> from transformers import pipeline
 >>> from pprint import pprint
 
->>> unmasker = pipeline('fill-mask', model='Your path')
+>>> model = BertForMaskedLM.from_pretrained('PATH-TO-MATBERT/matbert-base-cased')
+>>> tokenizer = BertTokenizerFast.from_pretrained('PATH-TO-MATBERT/matbert-base-cased', do_lower_case=False)
+>>> unmasker = pipeline('fill-mask', model=model, tokenizer=tokenizer)
 >>> pprint(unmasker("Conventional [MASK] synthesis is used to fabricate material LiMn2O4."))
-[{'score': 0.2966659665107727,
-  'sequence': '[CLS] conventional hydrothermal synthesis is used to fabricate '
-              'material limn2o4. [SEP]',
+[{'sequence': '[CLS] Conventional hydrothermal synthesis is used to fabricate material LiMn2O4. [SEP]',
+  'score': 0.43745726346969604,
   'token': 7524,
   'token_str': 'hydrothermal'},
- {'score': 0.15518330037593842,
-  'sequence': '[CLS] conventional chemical synthesis is used to fabricate '
-              'material limn2o4. [SEP]',
-  'token': 2868,
-  'token_str': 'chemical'},
- {'score': 0.09272155165672302,
-  'sequence': '[CLS] conventional solvothermal synthesis is used to fabricate '
-              'material limn2o4. [SEP]',
-  'token': 17831,
-  'token_str': 'solvothermal'},
- {'score': 0.08843386173248291,
-  'sequence': '[CLS] conventional combustion synthesis is used to fabricate '
-              'material limn2o4. [SEP]',
+ {'sequence': '[CLS] Conventional combustion synthesis is used to fabricate material LiMn2O4. [SEP]',
+  'score': 0.33699819445610046,
   'token': 5444,
   'token_str': 'combustion'},
- {'score': 0.04024626314640045,
-  'sequence': '[CLS] conventional thermal synthesis is used to fabricate '
-              'material limn2o4. [SEP]',
-  'token': 2880,
-  'token_str': 'thermal'}]
+ {'sequence': '[CLS] Conventional chemical synthesis is used to fabricate material LiMn2O4. [SEP]',
+  'score': 0.05040956661105156,
+  'token': 2868,
+  'token_str': 'chemical'},
+ {'sequence': '[CLS] Conventional solution synthesis is used to fabricate material LiMn2O4. [SEP]',
+  'score': 0.03483390063047409,
+  'token': 2291,
+  'token_str': 'solution'},
+ {'sequence': '[CLS] Conventional gel synthesis is used to fabricate material LiMn2O4. [SEP]',
+  'score': 0.01993640884757042,
+  'token': 4003,
+  'token_str': 'gel'}]
 ```
 
-## Details of the training
+## Training details
 
 Training of all MatBERT models was done using `transformers==3.3.1`.
 The corpus of this training contains 2 million papers collected by the
@@ -61,11 +88,15 @@ paragraphs with 20-510 tokens are filtered and used for training. Two WordPiece
 tokenizers (cased and uncased) that are optimized for materials science 
 literature was trained using these paragraphs.
 
-For training MatBERT, the config files we used were [bert-base-uncased](matbert/training/configs/bert-base-uncased.json)
-and [bert-base-cased](matbert/training/configs/bert-base-cased.json).
+For training MatBERT, the config files we used were [bert-base-uncased](matbert/training/configs/bert-base-uncased-wd.json)
+and [bert-base-cased](matbert/training/configs/bert-base-cased-wd.json).
 Only the masked language modeling (MLM) task was used to pretrain MatBERT models.
 Roughly the batch size is 192 paragraphs per gradient update step and there are
-5 epochs in total. Learning rates start with 5e-5 and decays linearly to zero
-as the training finishes. All models are trained using FP16 mode and O2 optimization 
-on 8 NVIDIA V100 cards.
+5 epochs in total. The optimizer used is Adam with beta1=0.9 and beta2=0.999. 
+Learning rates start with 5e-5 and decays linearly to zero as the training finishes. 
+A weight decay of 0.01 was used. All models are trained using FP16 mode and O2 
+optimization on 8 NVIDIA V100 cards.
 
+## Citing
+
+Coming soon, stay tuned.

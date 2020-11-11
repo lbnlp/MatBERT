@@ -13,6 +13,10 @@ from transformers import Trainer, TrainingArguments
 from matbert.training.dataset import SynthesisParagraphsDataset
 from matbert.training.options import parse_with_config, AllOpts
 
+__author__ = 'Haoyan Huo'
+__email__ = 'haoyan.huo@lbl.gov'
+__maintainer__ = 'Haoyan Huo'
+
 logger = logging.getLogger(__name__)
 logging.basicConfig(
     format="%(asctime)s [%(levelname)s][%(name)s]: %(message)s",
