@@ -93,8 +93,8 @@ paragraphs with 20-510 tokens are filtered and used for training. Two WordPiece
 tokenizers (cased and uncased) that are optimized for materials science 
 literature was trained using these paragraphs.
 
-For training MatBERT, the config files we used were [bert-base-uncased](matbert/training/configs/bert-base-uncased-wd.json)
-and [bert-base-cased](matbert/training/configs/bert-base-cased-wd.json).
+For training MatBERT, the config files we used were [matbert-base-uncased](matbert/training/configs/bert-base-uncased-wd.json)
+and [matbert-base-cased](matbert/training/configs/bert-base-cased-wd.json).
 Only the masked language modeling (MLM) task was used to pretrain MatBERT models.
 Roughly the batch size is 192 paragraphs per gradient update step and there are
 5 epochs in total. The optimizer used is Adam with beta1=0.9 and beta2=0.999. 
