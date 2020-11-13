@@ -11,9 +11,15 @@ To use MatBERT, download these files into a folder:
 
 ```
 export MODEL_PATH="Your path"
-curl -# -o $MODEL_PATH/config.json https://cedergroup-share.s3-us-west-2.amazonaws.com/public/MatBERT/config.json
-curl -# -o $MODEL_PATH/vocab.txt https://cedergroup-share.s3-us-west-2.amazonaws.com/public/MatBERT/vocab.txt
-curl -# -o $MODEL_PATH/pytorch_model.bin https://cedergroup-share.s3-us-west-2.amazonaws.com/public/MatBERT/pytorch_model.bin
+mkdir $MODEL_PATH/matbert-base-cased $MODEL_PATH/matbert-base-uncased
+
+curl -# -o $MODEL_PATH/matbert-base-cased/config.json https://cedergroup-share.s3-us-west-2.amazonaws.com/public/MatBERT/model_2Mpapers_cased_30522_wd/config.json
+curl -# -o $MODEL_PATH/matbert-base-cased/vocab.txt https://cedergroup-share.s3-us-west-2.amazonaws.com/public/MatBERT/model_2Mpapers_cased_30522_wd/vocab.txt
+curl -# -o $MODEL_PATH/matbert-base-cased/pytorch_model.bin https://cedergroup-share.s3-us-west-2.amazonaws.com/public/MatBERT/model_2Mpapers_cased_30522_wd/pytorch_model.bin
+
+curl -# -o $MODEL_PATH/matbert-base-uncased/config.json https://cedergroup-share.s3-us-west-2.amazonaws.com/public/MatBERT/model_2Mpapers_uncased_30522_wd/config.json
+curl -# -o $MODEL_PATH/matbert-base-uncased/vocab.txt https://cedergroup-share.s3-us-west-2.amazonaws.com/public/MatBERT/model_2Mpapers_uncased_30522_wd/vocab.txt
+curl -# -o $MODEL_PATH/matbert-base-uncased/pytorch_model.bin https://cedergroup-share.s3-us-west-2.amazonaws.com/public/MatBERT/model_2Mpapers_uncased_30522_wd/pytorch_model.bin
 ```
 
 ## Using MatBERT
@@ -49,33 +55,32 @@ The model can be loaded using Transformers' unversal loading API:
 
 ```python
 >>> from transformers import BertForMaskedLM, BertTokenizerFast, pipeline
->>> from transformers import pipeline
 >>> from pprint import pprint
 
 >>> model = BertForMaskedLM.from_pretrained('PATH-TO-MATBERT/matbert-base-cased')
 >>> tokenizer = BertTokenizerFast.from_pretrained('PATH-TO-MATBERT/matbert-base-cased', do_lower_case=False)
 >>> unmasker = pipeline('fill-mask', model=model, tokenizer=tokenizer)
 >>> pprint(unmasker("Conventional [MASK] synthesis is used to fabricate material LiMn2O4."))
-[{'sequence': '[CLS] Conventional hydrothermal synthesis is used to fabricate material LiMn2O4. [SEP]',
-  'score': 0.43745726346969604,
-  'token': 7524,
-  'token_str': 'hydrothermal'},
- {'sequence': '[CLS] Conventional combustion synthesis is used to fabricate material LiMn2O4. [SEP]',
-  'score': 0.33699819445610046,
+[{'sequence': '[CLS] Conventional combustion synthesis is used to fabricate material LiMn2O4. [SEP]',
+  'score': 0.4971400499343872,
   'token': 5444,
   'token_str': 'combustion'},
+ {'sequence': '[CLS] Conventional hydrothermal synthesis is used to fabricate material LiMn2O4. [SEP]',
+  'score': 0.2478722780942917,
+  'token': 7524,
+  'token_str': 'hydrothermal'},
  {'sequence': '[CLS] Conventional chemical synthesis is used to fabricate material LiMn2O4. [SEP]',
-  'score': 0.05040956661105156,
+  'score': 0.060953784734010696,
   'token': 2868,
   'token_str': 'chemical'},
- {'sequence': '[CLS] Conventional solution synthesis is used to fabricate material LiMn2O4. [SEP]',
-  'score': 0.03483390063047409,
-  'token': 2291,
-  'token_str': 'solution'},
  {'sequence': '[CLS] Conventional gel synthesis is used to fabricate material LiMn2O4. [SEP]',
-  'score': 0.01993640884757042,
+  'score': 0.03871171176433563,
   'token': 4003,
-  'token_str': 'gel'}]
+  'token_str': 'gel'},
+ {'sequence': '[CLS] Conventional solution synthesis is used to fabricate material LiMn2O4. [SEP]',
+  'score': 0.019403140991926193,
+  'token': 2291,
+  'token_str': 'solution'}]
 ```
 
 ## Training details
