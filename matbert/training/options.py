@@ -10,7 +10,7 @@ __maintainer__ = 'Haoyan Huo'
 
 __all__ = [
     'DataOpts', 'ModelOpts', 'TrainingOpts', 'MiscOpts',
-    'AllOpts', 'parse_with_config'
+    'BertOpts', 'GPT2Opts', 'parse_with_config'
 ]
 
 
@@ -39,10 +39,6 @@ class ModelOpts:
     logging_dir: Optional[str] = field(
         default=None,
         metadata={"help": "Logging dir, default will be the run-logs in output_dir."}
-    )
-    bert_config: dict = field(
-        default_factory=dict,
-        metadata={"help": "BERT config. Use a json file to specify a dict."}
     )
     load_checkpoint: bool = field(
         default=True,
@@ -112,12 +108,23 @@ class MiscOpts:
 
 
 @dataclass
-class AllOpts(ModelOpts, DataOpts, TrainingOpts, MiscOpts):
-    pass
+class BertOpts(ModelOpts, DataOpts, TrainingOpts, MiscOpts):
+    bert_config: dict = field(
+        default_factory=dict,
+        metadata={"help": "BERT config. Use a json file to specify a dict."}
+    )
 
 
-def parse_with_config() -> AllOpts:
-    parser = HfArgumentParser(AllOpts)
+@dataclass
+class GPT2Opts(ModelOpts, DataOpts, TrainingOpts, MiscOpts):
+    gpt2_config: dict = field(
+        default_factory=dict,
+        metadata={"help": "GPT2 config. Use a json file to specify a dict."}
+    )
+
+
+def parse_with_config(cls: type = BertOpts):
+    parser = HfArgumentParser(cls)
     opts = vars(parser.parse_args())
 
     if opts['config'] is not None:
@@ -126,4 +133,4 @@ def parse_with_config() -> AllOpts:
             for key, value in config.items():
                 opts[key] = value
 
-    return AllOpts(**opts)
+    return cls(**opts)

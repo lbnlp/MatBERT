@@ -11,7 +11,7 @@ from transformers import (
 from transformers import Trainer, TrainingArguments
 
 from matbert.training.dataset import SynthesisParagraphsDataset
-from matbert.training.options import parse_with_config, AllOpts
+from matbert.training.options import parse_with_config, BertOpts
 
 __author__ = 'Haoyan Huo'
 __email__ = 'haoyan.huo@lbl.gov'
@@ -36,7 +36,7 @@ class MyTrainer(Trainer):
         setattr(self, '_last_epoch', self.epoch)
 
 
-def prepare_model(opts: AllOpts) -> Tuple[BertForMaskedLM, str, int]:
+def prepare_model(opts: BertOpts) -> Tuple[BertForMaskedLM, str, int]:
     config = BertConfig(**opts.bert_config)
 
     checkpoints = list(map(str, Path(opts.output_dir).glob("checkpoint-*")))
@@ -79,6 +79,7 @@ def main():
         save_steps=opts.save_steps,
         save_total_limit=opts.save_total_limit,
         logging_dir=opts.logging_dir or os.path.join(opts.output_dir, 'run-logs'),
+        dataloader_num_workers=4,
         fp16=opts.fp16,
         fp16_opt_level=opts.fp16_opt_level,
         seed=opts.seed,
