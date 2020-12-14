@@ -120,6 +120,9 @@ class ModelArguments:
     config_name: Optional[str] = field(
         default=None, metadata={"help": "Pretrained config name or path if not the same as model_name"}
     )
+    do_lower_case: bool = field(
+        default=True, metadata={"help": "Whether to perform case conversion in tokenizer"}
+    )
     tokenizer_name: Optional[str] = field(
         default=None, metadata={"help": "Pretrained tokenizer name or path if not the same as model_name"}
     )
@@ -194,6 +197,9 @@ def main():
     if data_args.task_name is not None:
         # Downloading and loading a dataset from the hub.
         datasets = load_dataset("glue", data_args.task_name)
+        if data_args.task_name == 'mnli':
+            ax = load_dataset("glue", "ax")
+            datasets["test_ax"] = ax["test"]
     elif data_args.train_file.endswith(".csv"):
         # Loading a dataset from local csv files
         datasets = load_dataset(
@@ -239,6 +245,7 @@ def main():
     )
     tokenizer = AutoTokenizer.from_pretrained(
         model_args.tokenizer_name if model_args.tokenizer_name else model_args.model_name_or_path,
+        do_lower_case=model_args.do_lower_case,
         cache_dir=model_args.cache_dir,
         use_fast=model_args.use_fast_tokenizer,
     )
@@ -389,7 +396,9 @@ def main():
         test_datasets = [test_dataset]
         if data_args.task_name == "mnli":
             tasks.append("mnli-mm")
+            tasks.append("mnli-ax")
             test_datasets.append(datasets["test_mismatched"])
+            test_datasets.append(datasets["test_ax"])
 
         for test_dataset, task in zip(test_datasets, tasks):
             # Removing the `label` columns because it contains -1 and Trainer won't like that.
