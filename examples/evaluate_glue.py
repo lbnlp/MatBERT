@@ -20,6 +20,7 @@ import logging
 import os
 import random
 import sys
+import time
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -27,6 +28,7 @@ import numpy as np
 from datasets import load_dataset, load_metric
 
 import transformers
+from torch.distributed import barrier
 from transformers import (
     AutoConfig,
     AutoModelForSequenceClassification,
@@ -134,6 +136,17 @@ class ModelArguments:
         default=True,
         metadata={"help": "Whether to use one of the fast tokenizer (backed by the tokenizers library) or not."},
     )
+
+
+def wrap_save_training(trainer):
+    original = trainer.save_model
+
+    def _func(*args, **kwargs):
+        result = original(*args, **kwargs)
+        barrier()
+        return result
+
+    trainer.save_model = _func
 
 
 def main():
@@ -323,8 +336,9 @@ def main():
         logger.info(f"Sample {index} of the training set: {train_dataset[index]}.")
 
     # Get the metric function
+    exp_id = f'exp-{time.time()}'
     if data_args.task_name is not None:
-        metric = load_metric("glue", data_args.task_name)
+        metric = load_metric("glue", data_args.task_name, experiment_id=exp_id)
 
     # TODO: When datasets metrics include regular accuracy, make an else here and remove special branch from
     # compute_metrics
@@ -357,6 +371,7 @@ def main():
     )
 
     # Training
+    wrap_save_training(trainer)
     if training_args.do_train:
         trainer.train(
             model_path=model_args.model_name_or_path if os.path.isdir(model_args.model_name_or_path) else None
