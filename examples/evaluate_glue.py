@@ -25,6 +25,7 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 import numpy as np
+import torch
 from datasets import load_dataset, load_metric
 
 import transformers
@@ -39,7 +40,7 @@ from transformers import (
     Trainer,
     TrainingArguments,
     default_data_collator,
-    set_seed,
+    set_seed, PreTrainedModel, WEIGHTS_NAME,
 )
 from transformers.trainer_utils import is_main_process
 
@@ -140,13 +141,33 @@ class ModelArguments:
 
 def wrap_save_training(trainer):
     original = trainer.save_model
+    # original_save = trainer._save
 
     def _func(*args, **kwargs):
         result = original(*args, **kwargs)
         barrier()
         return result
 
+    def _new_save(self, output_dir: Optional[str] = None):
+        output_dir = output_dir if output_dir is not None else self.args.output_dir
+        os.makedirs(output_dir, exist_ok=True)
+        logger.info("Saving model checkpoint to %s", output_dir)
+        # Save a trained model and configuration using `save_pretrained()`.
+        # They can then be reloaded using `from_pretrained()`
+        if not isinstance(self.model, PreTrainedModel):
+            logger.info("Trainer.model is not a `PreTrainedModel`, only saving its state dict.")
+            state_dict = {k: v.cpu() for k, v in self.model.state_dict().items()}
+            torch.save(state_dict, os.path.join(output_dir, WEIGHTS_NAME))
+        else:
+            self.model.save_pretrained(output_dir)
+        if self.tokenizer is not None and self.is_world_process_zero():
+            self.tokenizer.save_pretrained(output_dir)
+
+        # Good practice: save your training arguments together with the trained model
+        torch.save(self.args, os.path.join(output_dir, "training_args.bin"))
+
     trainer.save_model = _func
+    trainer._save = _new_save.__get__(trainer, Trainer)
 
 
 def main():
