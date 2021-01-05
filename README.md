@@ -83,6 +83,31 @@ The model can be loaded using Transformers' unversal loading API:
   'token_str': 'solution'}]
 ```
 
+## Evaluation
+
+### GLUE
+
+The [General Language Understanding Evaluation (GLUE) benchmark](https://gluebenchmark.com/) 
+is a collection of resources for training, evaluating, and analyzing natural language understanding systems.
+Note, GLUE evaluates language models' capability to model general purpose language understanding,
+which may not align with the capabilities of language models trained on special domains, such as MatBERT.
+
+| Task                                   | Metric                | Score (MatBERT-base-cased) | Score (MatBERT-base-uncased) |
+|----------------------------------------|-----------------------|---------------------------:|-----------------------------:|
+| The Corpus of Linguistic Acceptability | Matthew's Corr        |                       26.1 |                         26.6 |
+| The Stanford Sentiment Treebank        | Accuracy              |                       89.5 |                         90.2 |
+| Microsoft Research Paraphrase Corpus   | F1/Accuracy           |                  87.0/83.1 |                    87.4/82.7 |
+| Semantic Textual Similarity Benchmark  | Pearson-Spearman Corr |                  80.3/79.3 |                    81.5/80.2 |
+| Quora Question Pairs                   | F1/Accuracy           |                  69.8/88.4 |                    69.7/88.6 |
+| MultiNLI Matched                       | Accuracy              |                       79.6 |                         80.7 |
+| MultiNLI Mismatched                    | Accuracy              |                       79.3 |                         80.1 |
+| Question NLI                           | Accuracy              |                       88.4 |                         88.5 |
+| Recognizing Textual Entailment         | Accuracy              |                       63.0 |                         60.2 |
+| Winograd NLI                           | Accuracy              |                       61.6 |                         65.1 |
+| Diagnostics Main                       | Matthew's Corr        |                       32.6 |                         31.9 |
+| Average Score                          | ----                  |                       72.4 |                         72.9 |
+
+
 ## Training details
 
 Training of all MatBERT models was done using `transformers==3.3.1`.
