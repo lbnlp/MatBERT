@@ -3,10 +3,6 @@ A pretrained BERT model on materials science literature.
 
 ## Downloading data files
 
-MatBERT is now "semi-public" in the sense that everyone can download 
-the model files, but we don't want too many people have access these
-download links now.
-
 To use MatBERT, download these files into a folder:
 
 ```
