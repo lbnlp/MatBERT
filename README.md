@@ -1,5 +1,6 @@
 # MatBERT
-A pretrained BERT model on materials science literature.
+A pretrained BERT model on materials science literature. MatBERT specializes in understanding 
+materials science terminologies and paragraph-level scientific reasoning.
 
 ## Downloading data files
 
@@ -47,7 +48,8 @@ BERT tokenizer: ['La', '##0', '.', '85', '##A', '##g', '##0', '.', '15', '##M', 
 
 ### The model
 
-The model can be loaded using Transformers' unversal loading API:
+The model can be loaded using Transformers' unversal loading API. Here, we demonstrate
+how MatBERT performs scientific reasoning for the synthesis of Li-ion battery materials.
 
 ```python
 >>> from transformers import BertForMaskedLM, BertTokenizerFast, pipeline
@@ -114,7 +116,8 @@ paragraphs with 20-510 tokens are filtered and used for training. Two WordPiece
 tokenizers (cased and uncased) that are optimized for materials science 
 literature was trained using these paragraphs.
 
-For training MatBERT, the config files we used were [matbert-base-uncased](matbert/training/configs/bert-base-uncased-wd.json)
+For training MatBERT, the config files we used were 
+[matbert-base-uncased](matbert/training/configs/bert-base-uncased-wd.json)
 and [matbert-base-cased](matbert/training/configs/bert-base-cased-wd.json).
 Only the masked language modeling (MLM) task was used to pretrain MatBERT models.
 Roughly the batch size is 192 paragraphs per gradient update step and there are
