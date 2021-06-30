@@ -1,11 +1,8 @@
 # MatBERT
-A pretrained BERT model on materials science literature.
+A pretrained BERT model on materials science literature. MatBERT specializes in understanding 
+materials science terminologies and paragraph-level scientific reasoning.
 
 ## Downloading data files
-
-MatBERT is now "semi-public" in the sense that everyone can download 
-the model files, but we don't want too many people have access these
-download links now.
 
 To use MatBERT, download these files into a folder:
 
@@ -51,7 +48,8 @@ BERT tokenizer: ['La', '##0', '.', '85', '##A', '##g', '##0', '.', '15', '##M', 
 
 ### The model
 
-The model can be loaded using Transformers' unversal loading API:
+The model can be loaded using Transformers' unversal loading API. Here, we demonstrate
+how MatBERT performs scientific reasoning for the synthesis of Li-ion battery materials.
 
 ```python
 >>> from transformers import BertForMaskedLM, BertTokenizerFast, pipeline
@@ -83,6 +81,31 @@ The model can be loaded using Transformers' unversal loading API:
   'token_str': 'solution'}]
 ```
 
+## Evaluation
+
+### GLUE
+
+The [General Language Understanding Evaluation (GLUE) benchmark](https://gluebenchmark.com/) 
+is a collection of resources for training, evaluating, and analyzing natural language understanding systems.
+Note, GLUE evaluates language models' capability to model general purpose language understanding,
+which may not align with the capabilities of language models trained on special domains, such as MatBERT.
+
+| Task                                   | Metric                | Score (MatBERT-base-cased) | Score (MatBERT-base-uncased) |
+|----------------------------------------|-----------------------|---------------------------:|-----------------------------:|
+| The Corpus of Linguistic Acceptability | Matthew's Corr        |                       26.1 |                         26.6 |
+| The Stanford Sentiment Treebank        | Accuracy              |                       89.5 |                         90.2 |
+| Microsoft Research Paraphrase Corpus   | F1/Accuracy           |                  87.0/83.1 |                    87.4/82.7 |
+| Semantic Textual Similarity Benchmark  | Pearson-Spearman Corr |                  80.3/79.3 |                    81.5/80.2 |
+| Quora Question Pairs                   | F1/Accuracy           |                  69.8/88.4 |                    69.7/88.6 |
+| MultiNLI Matched                       | Accuracy              |                       79.6 |                         80.7 |
+| MultiNLI Mismatched                    | Accuracy              |                       79.3 |                         80.1 |
+| Question NLI                           | Accuracy              |                       88.4 |                         88.5 |
+| Recognizing Textual Entailment         | Accuracy              |                       63.0 |                         60.2 |
+| Winograd NLI                           | Accuracy              |                       61.6 |                         65.1 |
+| Diagnostics Main                       | Matthew's Corr        |                       32.6 |                         31.9 |
+| Average Score                          | ----                  |                       72.4 |                         72.9 |
+
+
 ## Training details
 
 Training of all MatBERT models was done using `transformers==3.3.1`.
@@ -93,14 +116,17 @@ paragraphs with 20-510 tokens are filtered and used for training. Two WordPiece
 tokenizers (cased and uncased) that are optimized for materials science 
 literature was trained using these paragraphs.
 
-For training MatBERT, the config files we used were [matbert-base-uncased](matbert/training/configs/bert-base-uncased-wd.json)
+For training MatBERT, the config files we used were 
+[matbert-base-uncased](matbert/training/configs/bert-base-uncased-wd.json)
 and [matbert-base-cased](matbert/training/configs/bert-base-cased-wd.json).
 Only the masked language modeling (MLM) task was used to pretrain MatBERT models.
 Roughly the batch size is 192 paragraphs per gradient update step and there are
-5 epochs in total. The optimizer used is Adam with beta1=0.9 and beta2=0.999. 
+5 epochs in total. The optimizer used is AdamW with beta1=0.9 and beta2=0.999. 
 Learning rates start with 5e-5 and decays linearly to zero as the training finishes. 
 A weight decay of 0.01 was used. All models are trained using FP16 mode and O2 
-optimization on 8 NVIDIA V100 cards.
+optimization on 8 NVIDIA V100 cards. The loss values during training can be found
+at [matbert-base-uncased](docs/model_2Mpapers_uncased_30522_wd.csv) and
+[matbert-base-cased](docs/model_2Mpapers_cased_30522_wd.csv).
 
 ## Citing
 
