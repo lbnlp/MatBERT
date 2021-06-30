@@ -121,10 +121,12 @@ For training MatBERT, the config files we used were
 and [matbert-base-cased](matbert/training/configs/bert-base-cased-wd.json).
 Only the masked language modeling (MLM) task was used to pretrain MatBERT models.
 Roughly the batch size is 192 paragraphs per gradient update step and there are
-5 epochs in total. The optimizer used is Adam with beta1=0.9 and beta2=0.999. 
+5 epochs in total. The optimizer used is AdamW with beta1=0.9 and beta2=0.999. 
 Learning rates start with 5e-5 and decays linearly to zero as the training finishes. 
 A weight decay of 0.01 was used. All models are trained using FP16 mode and O2 
-optimization on 8 NVIDIA V100 cards.
+optimization on 8 NVIDIA V100 cards. The loss values during training can be found
+at [matbert-base-uncased](docs/model_2Mpapers_uncased_30522_wd.csv) and
+[matbert-base-cased](docs/model_2Mpapers_cased_30522_wd.csv).
 
 ## Citing
 
