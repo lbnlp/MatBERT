@@ -134,4 +134,4 @@ Coming soon, stay tuned.
 
 This work used the Extreme Science and Engineering Discovery Environment (XSEDE) 
 GPU resources, specifically the Bridges-2 supercomputer at the Pittsburgh 
-Supercomputing Center.
+Supercomputing Center, through allocation TG-DMR970008S.
