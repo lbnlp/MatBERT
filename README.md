@@ -131,3 +131,7 @@ at [matbert-base-uncased](docs/model_2Mpapers_uncased_30522_wd.csv) and
 ## Citing
 
 Coming soon, stay tuned.
+
+This work used the Extreme Science and Engineering Discovery Environment (XSEDE) 
+GPU resources, specifically the Bridges-2 supercomputer at the Pittsburgh 
+Supercomputing Center.
