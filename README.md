@@ -116,6 +116,9 @@ paragraphs with 20-510 tokens are filtered and used for training. Two WordPiece
 tokenizers (cased and uncased) that are optimized for materials science 
 literature was trained using these paragraphs.
 
+The DOIs and titles of the 2 million papers can be found at [this CSV file](https://cedergroup-share.s3-us-west-2.amazonaws.com/public/MatBERT/PretrainingDataDOIs.csv.zip).
+To grasp an overview of this corpus, we created a word cloud image [here](docs/PretrainingCorpusWordCloud.png).
+
 For training MatBERT, the config files we used were 
 [matbert-base-uncased](matbert/training/configs/bert-base-uncased-wd.json)
 and [matbert-base-cased](matbert/training/configs/bert-base-cased-wd.json).
