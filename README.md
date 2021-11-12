@@ -133,7 +133,16 @@ at [matbert-base-uncased](docs/model_2Mpapers_uncased_30522_wd.csv) and
 
 ## Citing
 
-Coming soon, stay tuned.
+If you used this work in your projects, please consider citing this paper:
+
+```
+@article{walker2021impact,
+  title={The Impact of Domain-Specific Pre-Training on Named Entity Recognition Tasks in Materials Science},
+  author={Walker, Nicholas and Trewartha, Amalie and Huo, Haoyan and Lee, Sanghoon and Cruse, Kevin and Dagdelen, John and Dunn, Alexander and Persson, Kristin and Ceder, Gerbrand and Jain, Anubhav},
+  journal={Available at SSRN 3950755},
+  year={2021}
+}
+```
 
 This work used the Extreme Science and Engineering Discovery Environment (XSEDE) 
 GPU resources, specifically the Bridges-2 supercomputer at the Pittsburgh 
